@@ -29,10 +29,10 @@ RUN apk update \
     && apk del build-deps \
     && rm -rf
 
-COPY --chmod=+X --chown=django ./compose/production/django/entrypoint /entrypoint
-COPY --chmod=+X --chown=django ./compose/production/django/start /start
-COPY --chmod=+X --chown=django ./compose/production/django/queue/start /start-queue
-COPY --chmod=+X --chown=django ./compose/production/django/seed_data /seed_data
+COPY --chmod=0755 --chown=django ./compose/production/django/entrypoint /entrypoint
+COPY --chmod=0755 --chown=django ./compose/production/django/start /start
+COPY --chmod=0755 --chown=django ./compose/production/django/queue/start /start-queue
+COPY --chmod=0755 --chown=django ./compose/production/django/seed_data /seed_data
 COPY --chown=django . /app
 
 RUN sed -i 's/\r$//g' /entrypoint /start /start-queue /seed_data \
