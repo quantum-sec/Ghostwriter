@@ -27,17 +27,26 @@ RUN apk update \
     && rm -rf /requirements \
     # remove the virtual package group 'build-deps'
     && apk del build-deps \
-    && rm -rf
+    && rm -rf /var/cache/apk/*
 
-COPY --chmod=0755 --chown=django ./compose/production/django/entrypoint /entrypoint
-COPY --chmod=0755 --chown=django ./compose/production/django/start /start
-COPY --chmod=0755 --chown=django ./compose/production/django/queue/start /start-queue
-COPY --chmod=0755 --chown=django ./compose/production/django/seed_data /seed_data
 COPY --chown=django . /app
+# COPY --chmod=0755 --chown=django ./compose/production/django/entrypoint /entrypoint
+# COPY --chmod=0755 --chown=django ./compose/production/django/start /start
+# COPY --chmod=0755 --chown=django ./compose/production/django/queue/start /start-queue
+# COPY --chmod=0755 --chown=django ./compose/production/django/seed_data /seed_data
 
-RUN sed -i 's/\r$//g' /entrypoint /start /start-queue /seed_data \
-    && mkdir -p /app/staticfiles /app/ghostwriter/media \
-    && chown django /app/staticfiles /app/ghostwriter/media
+RUN cp -ap /app/compose/production/django/entrypoint /entrypoint \
+    && cp -vap /app/compose/production/django/start /start \
+    && cp -vap /app/compose/production/django/queue/start /start-queue \
+    && cp -vap /app/compose/production/django/seed_data /seed_data \
+    && chmod -v 0755 /entrypoint /start /start-queue /seed_data \
+    # remove all carriage returns in the case that a user checks out the files on a windows system
+    # and has their git core.eol set to native or crlf
+    && sed -i 's/\r$//g' /entrypoint /start /start-queue /seed_data \
+    # due to volumes mounted to these locations we must created and set the ownership of the underlying directory
+    # so that it is correctly propagated to the named volume
+    && mkdir -p "/app/ghostwriter/media" "/app/staticfiles" \
+    && chown django: "/app/ghostwriter/media" "/app/staticfiles"
 
 USER django
 
