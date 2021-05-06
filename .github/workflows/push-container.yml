@@ -13,7 +13,7 @@ on:
     - cron:  '0 3 1,15 * *'
 
 env:
-  PLATFORMS: linux/amd64,linux/arm64
+  PLATFORMS: linux/amd64 # multiple platforms can be specified as: linux/amd64,linux/arm64
 
 jobs:
   docker:
