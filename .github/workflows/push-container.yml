@@ -121,7 +121,7 @@ jobs:
           context: .
           file: ./compose/django/Dockerfile
           platforms: ${{ env.PLATFORMS }}
-          push: true
+          push: ${{ contains(fromJson('["push", "schedule"]'), github.event_name) }}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=local,src=/tmp/.buildx-cache
