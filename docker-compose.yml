@@ -1,0 +1,37 @@
+version: '3.2'
+
+volumes:
+  postgres_data: {}
+  postgres_backups: {}
+  staticfiles: {}
+  media: {}
+
+services:
+  django:
+    depends_on:
+      - postgres
+      - redis
+    command: /start
+
+  postgres:
+    stop_grace_period: 1m
+    volumes:
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
+        read_only: false
+      - type: volume
+        source: postgres_backups
+        target: /backups
+        read_only: false
+
+  redis:
+    image: redis:5-alpine
+
+  queue:
+    depends_on:
+      - django
+      - postgres
+      - redis
+    ports: []
+    command: /start-queue

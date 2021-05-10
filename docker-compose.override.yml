@@ -1,0 +1,45 @@
+version: '3.2'
+
+services:
+  django:
+    build:
+      context: .
+      dockerfile: ./compose/production/django/Dockerfile
+      args:
+        STAGE: local
+    restart: 'no'
+    volumes:
+      - type: bind
+        source: ./
+        target: /app
+        read_only: false
+    env_file:
+      - './.envs/.local/.django'
+      - './.envs/.local/.postgres'
+    ports:
+      - '127.0.0.1:8000:8000'
+
+  postgres:
+    image: postgres:11.3
+    restart: 'no'
+    env_file:
+      - './.envs/.local/.postgres'
+
+  redis:
+    restart: 'no'
+
+  queue:
+    build:
+      context: .
+      dockerfile: ./compose/production/django/Dockerfile
+      args:
+        STAGE: local
+    restart: 'no'
+    volumes:
+      - type: bind
+        source: ./
+        target: /app
+        read_only: false
+    env_file:
+      - './.envs/.local/.django'
+      - './.envs/.local/.postgres'
