@@ -4,7 +4,7 @@ services:
   django:
     build:
       context: .
-      dockerfile: ./compose/production/django/Dockerfile
+      dockerfile: ./compose/django/Dockerfile
       args:
         STAGE: local
     restart: 'no'
@@ -31,7 +31,7 @@ services:
   queue:
     build:
       context: .
-      dockerfile: ./compose/production/django/Dockerfile
+      dockerfile: ./compose/django/Dockerfile
       args:
         STAGE: local
     restart: 'no'

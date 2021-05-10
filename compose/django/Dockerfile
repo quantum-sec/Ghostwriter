@@ -104,10 +104,10 @@ FROM django as django-production
 COPY --chown=django . /app
 
 # copy the entrypoint and run scripts
-RUN cp -ap /app/compose/production/django/entrypoint /entrypoint \
-    && cp -vap /app/compose/production/django/start /start \
-    && cp -vap /app/compose/production/django/queue/start /start-queue \
-    && cp -vap /app/compose/production/django/seed_data /seed_data \
+RUN cp -ap /app/compose/django/entrypoint /entrypoint \
+    && cp -vap /app/compose/django/start /start \
+    && cp -vap /app/compose/django/queue/start /start-queue \
+    && cp -vap /app/compose/django/seed_data /seed_data \
     && chmod -v 0755 /entrypoint /start /start-queue /seed_data \
     # remove all carriage returns in the case that a user checks out the files on a windows system
     # and has their git core.eol set to native or crlf
@@ -115,7 +115,7 @@ RUN cp -ap /app/compose/production/django/entrypoint /entrypoint \
     # due to volumes mounted to these locations we must created and set the ownership of the underlying directory
     # so that it is correctly propagated to the named volume
     && mkdir -p "/app/ghostwriter/media" "/app/staticfiles" \
-    && chown "django": "/app/ghostwriter/media" "/app/staticfiles"
+    && chown -R "django": "/app/ghostwriter/media" "/app/staticfiles"
 # ---------------------------------------------
 # END production stage
 # ---------------------------------------------
@@ -126,10 +126,10 @@ RUN cp -ap /app/compose/production/django/entrypoint /entrypoint \
 FROM django as django-local
 
 # add our application
-COPY --chown=django ./compose/production/django/entrypoint /entrypoint
-COPY --chown=django ./compose/production/django/start-dev /start
-COPY --chown=django ./compose/production/django/queue/start /start-queue
-COPY --chown=django ./compose/production/django/seed_data /seed_data
+COPY --chown=django ./compose/django/entrypoint /entrypoint
+COPY --chown=django ./compose/django/start-dev /start
+COPY --chown=django ./compose/django/queue/start /start-queue
+COPY --chown=django ./compose/django/seed_data /seed_data
 
 
 # copy the entrypoint and run scripts
@@ -140,7 +140,7 @@ RUN chmod -v 0755 /entrypoint /start /start-queue /seed_data \
     # due to volumes mounted to these locations we must created and set the ownership of the underlying directory
     # so that it is correctly propagated to the named volume
     && mkdir -p "/app/ghostwriter/media" "/app/staticfiles" \
-    && chown "django": "/app/ghostwriter/media" "/app/staticfiles"
+    && chown -R "django": "/app/ghostwriter/media" "/app/staticfiles"
 # ---------------------------------------------
 # END local stage
 # ---------------------------------------------

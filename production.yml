@@ -23,7 +23,7 @@ services:
   postgres:
     build:
       context: .
-      dockerfile: ./compose/production/postgres/Dockerfile
+      dockerfile: ./compose/postgres/Dockerfile
     restart: unless-stopped
     env_file:
       - './.envs/.production/.postgres'
@@ -59,7 +59,7 @@ services:
         volume:
           nocopy: true
       - type: bind
-        source: ./compose/production/nginx/nginx.conf
+        source: ./compose/nginx/nginx.conf
         target: /etc/nginx/conf.d/default.conf
         # target: /etc/nginx/nginx.conf
         read_only: true
