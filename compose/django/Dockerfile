@@ -10,8 +10,8 @@ ARG STAGE=production
 # only update build build when requirements have changed
 COPY ./requirements /requirements
 # install build dependencies
-RUN --mount=type=cache,target=/tmp/wheels,sharing=locked \
-    && apk update \
+RUN --mount=type=cache,target=/tmp/wheels \
+    apk update \
     && apk add --no-cache build-base \
     # psycopg2 dependencies
     && apk add --no-cache --virtual build-deps gcc python3-dev musl-dev \
@@ -87,8 +87,9 @@ COPY --from=build /requirements /tmp/requirements
 # COPY --from=build /tmp/wheels /tmp/wheels
 
 # combine build and ${STAGE}.txt - remove --no-binary to installing our own wheels
-RUN --mount=type=cache,target=/tmp/wheels,readonly,sharing=locked,from=build,source=/tmp/wheels \
-    ( cat /tmp/requirements/base.txt; sed -e 's/--no-binary.*//' -e 's/^-r .*//' /tmp/requirements/${STAGE}.txt ) | tee /tmp/requirements.txt >/dev/null \
+RUN --mount=type=cache,target=/tmp/wheels,readonly \
+    du -shc /tmp/wheels \
+    && ( cat /tmp/requirements/base.txt; sed -e 's/--no-binary.*//' -e 's/^-r .*//' /tmp/requirements/${STAGE}.txt ) | tee /tmp/requirements.txt >/dev/null \
     && pip install --no-cache-dir --no-index --find-links=/tmp/wheels -r /tmp/requirements.txt \
     && rm -rf /tmp/requirements /tmp/requirements.txt
 # ---------------------------------------------
@@ -159,7 +160,7 @@ WORKDIR /app
 # ---------------------------------------------
 
 # ---------------------------------------------
-# BEGIN conditional stage
+# BEGIN live stage
 # ---------------------------------------------
 FROM conditional as live
 
@@ -167,5 +168,5 @@ VOLUME ["/app/ghostwriter/media", "/app/staticfiles"]
 
 ENTRYPOINT ["/entrypoint"]
 # ---------------------------------------------
-# END conditional stage
+# END live stage
 # ---------------------------------------------
