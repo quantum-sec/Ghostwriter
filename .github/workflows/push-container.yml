@@ -3,7 +3,7 @@ name: push-container
 on:
   push:
     branches:
-      - 'quantum'
+      - 'master'
       - 'feature/push-to-container-registry'
     tags:
       - 'v*'
