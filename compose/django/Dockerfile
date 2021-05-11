@@ -10,7 +10,7 @@ ARG STAGE=production
 # only update build build when requirements have changed
 COPY ./requirements /requirements
 # install build dependencies
-RUN --mount=type=cache,target=/tmp/wheels \
+RUN --mount=type=cache,mode=0755,target=/root/.cache/pip \
     apk update \
     && apk add --no-cache build-base \
     # psycopg2 dependencies
@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/tmp/wheels \
     # Rust and Cargo required by the ``cryptography`` Python package - only required during build
     && apk add --no-cache rust \
     && apk add --no-cache cargo \
-    && pip install --no-cache-dir -r /requirements/${STAGE}.txt \
+    # && pip install -r /requirements/${STAGE}.txt \
     # build wheels
     && pip install wheel && pip wheel --wheel-dir=/tmp/wheels -r /requirements/${STAGE}.txt \
     # remove the virtual package group 'build-deps'
@@ -87,10 +87,11 @@ COPY --from=build /requirements /tmp/requirements
 # COPY --from=build /tmp/wheels /tmp/wheels
 
 # combine build and ${STAGE}.txt - remove --no-binary to installing our own wheels
-RUN --mount=type=cache,target=/tmp/wheels,readonly \
+RUN --mount=type=bind,target=/tmp/wheels,source=/tmp/wheels,from=build \
+    --mount=type=cache,mode=0755,target=/root/.cache/pip \
     du -shc /tmp/wheels \
     && ( cat /tmp/requirements/base.txt; sed -e 's/--no-binary.*//' -e 's/^-r .*//' /tmp/requirements/${STAGE}.txt ) | tee /tmp/requirements.txt >/dev/null \
-    && pip install --no-cache-dir --no-index --find-links=/tmp/wheels -r /tmp/requirements.txt \
+    && pip install --find-links=/tmp/wheels -r /tmp/requirements.txt \
     && rm -rf /tmp/requirements /tmp/requirements.txt
 # ---------------------------------------------
 # END django image stage
