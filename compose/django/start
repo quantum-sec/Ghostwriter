@@ -4,21 +4,77 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-AVATAR_DIR=/app/ghostwriter/media/user_avatars
-EVIDENCE_DIR=/app/ghostwriter/media/evidence
-TEMPLATE_DIR=/app/ghostwriter/media/templates
+readonly AVATAR_DIR=/app/ghostwriter/media/user_avatars
+readonly EVIDENCE_DIR=/app/ghostwriter/media/evidence
+readonly TEMPLATE_DIR=/app/ghostwriter/media/templates
 
-TEMPLATE_PATH_DOCX=/app/ghostwriter/reporting/templates/reports/template.docx
-TEMPLATE_PATH_PPTX=/app/ghostwriter/reporting/templates/reports/template.pptx
+readonly TEMPLATE_PATH_DOCX=/app/ghostwriter/reporting/templates/reports/template.docx
+readonly TEMPLATE_PATH_PPTX=/app/ghostwriter/reporting/templates/reports/template.pptx
 
-[[ ! -d "$EVIDENCE_DIR" ]] && mkdir -p "$EVIDENCE_DIR" && chown -R django "$EVIDENCE_DIR"
-[[ ! -d "$AVATAR_DIR" ]] && mkdir -p "$AVATAR_DIR" && chown -R django "$AVATAR_DIR"
-[[ ! -d "$TEMPLATE_DIR" ]] && mkdir -p "$TEMPLATE_DIR" && chown -R django "$TEMPLATE_DIR"
+function create_dir {
+  local target_directory="$1";
+  local target_user="${2:-django}";
 
-cp -u -p "$TEMPLATE_PATH_DOCX" "$TEMPLATE_DIR"
-cp -u -p "$TEMPLATE_PATH_PPTX" "$TEMPLATE_DIR"
+  if test -d "$target_directory";
+  then return 0;
+  fi
 
-python /app/manage.py collectstatic --noinput
-python /app/manage.py migrate
-# /usr/local/bin/daphne -b 0.0.0.0 -p 5000 config.asgi:application
-uvicorn config.asgi:application --host 0.0.0.0 --port 5000
+  mkdir -p "$target_directory";
+  chown -R "$target_user": "$target_directory";
+}
+
+function prepare {
+  create_dir "$EVIDENCE_DIR" "${USER:-django}";
+  create_dir "$AVATAR_DIR" "${USER:-django}";
+  create_dir "$TEMPLATE_DIR" "${USER:-django}";
+
+  cp -u -p "$TEMPLATE_PATH_DOCX" "${TEMPLATE_DIR}/";
+  cp -u -p "$TEMPLATE_PATH_PPTX" "${TEMPLATE_DIR}/";
+}
+
+function queue {
+  python manage.py qcluster;
+}
+
+function live {
+  python /app/manage.py collectstatic --noinput;
+  python /app/manage.py migrate;
+  # /usr/local/bin/daphne -b 0.0.0.0 -p 5000 config.asgi:application
+  uvicorn config.asgi:application --host 0.0.0.0 --port 5000;
+}
+
+function dev {
+  python manage.py makemigrations;
+  python manage.py migrate;
+  # python manage.py runserver 0.0.0.0:8000
+  uvicorn config.asgi:application --host 0.0.0.0 --reload;
+}
+
+function debug {
+  python -m pip install --upgrade pip;
+  python manage.py makemigrations;
+  python manage.py migrate;
+  pip install debugpy -t /tmp;
+  python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 manage.py runserver 0.0.0.0:8000 --nothreading;
+}
+
+function main {
+  local target="${1:-live}";
+
+  prepare;
+  case "$target" in
+    live | debug | dev)
+      prepare;
+      $target;
+      ;;
+    queue )
+      $target;
+      ;;
+    *)
+      echo >&2 "Unknown target: $target";
+      exit 1;
+    ;;
+  esac
+}
+
+main "$@";

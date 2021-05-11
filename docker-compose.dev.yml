@@ -1,46 +1,47 @@
-version: '3'
-
-volumes:
-  local_postgres_data: {}
-  local_postgres_data_backups: {}
+version: '3.2'
 
 services:
-  django: &django
+  django:
     build:
       context: .
-      dockerfile: ./compose/local/django/Dockerfile
-    image: ghostwriter_local_django
-    depends_on:
-      - postgres
+      dockerfile: ./compose/django/Dockerfile
+      args:
+        STAGE: local
+    restart: 'no'
     volumes:
-      - .:/app
+      - type: bind
+        source: ./
+        target: /app
+        read_only: false
     env_file:
-      - ./.envs/.local/.django
-      - ./.envs/.local/.postgres
+      - './.envs/.local/.django'
+      - './.envs/.local/.postgres'
     ports:
-      - "8000:8000"
-      - "5678:5678"
-    command: /start_debug
+      - '127.0.0.1:8000:8000'
+      - '127.0.0.1:5678:5678'
+    command: /start debug
 
   postgres:
-    build:
-      context: .
-      dockerfile: ./compose/production/postgres/Dockerfile
-    image: ghostwriter_production_postgres
-    volumes:
-      - local_postgres_data:/var/lib/postgresql/data
-      - local_postgres_data_backups:/backups
+    image: postgres:11.3
+    restart: 'no'
     env_file:
-      - ./.envs/.local/.postgres
+      - './.envs/.local/.postgres'
 
   redis:
-    image: redis:5-alpine
+    restart: 'no'
 
   queue:
-    <<: *django
-    image: ghostwriter_local_queue
-    depends_on:
-      - redis
-      - postgres
-    ports: []
-    command: /start-queue
+    build:
+      context: .
+      dockerfile: ./compose/django/Dockerfile
+      args:
+        STAGE: local
+    restart: 'no'
+    volumes:
+      - type: bind
+        source: ./
+        target: /app
+        read_only: false
+    env_file:
+      - './.envs/.local/.django'
+      - './.envs/.local/.postgres'

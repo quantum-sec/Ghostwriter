@@ -34,4 +34,4 @@ services:
       - postgres
       - redis
     ports: []
-    command: /start-queue
+    command: /start queue

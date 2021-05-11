@@ -18,6 +18,7 @@ services:
       - './.envs/.local/.postgres'
     ports:
       - '127.0.0.1:8000:8000'
+    command: /start dev
 
   postgres:
     image: postgres:11.3

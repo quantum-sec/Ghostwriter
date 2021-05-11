@@ -19,6 +19,7 @@ services:
         source: media
         target: /app/ghostwriter/media
         read_only: false
+    command: /start live
 
   postgres:
     build:
