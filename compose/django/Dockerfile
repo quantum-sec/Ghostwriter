@@ -25,7 +25,6 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip \
   # Rust and Cargo required by the ``cryptography`` Python package - only required during build
   && apk add --no-cache rust \
   && apk add --no-cache cargo \
-  # && pip install -r /requirements/${STAGE}.txt \
   # build wheels
   && pip install wheel && pip wheel --wheel-dir=/tmp/wheels -r /requirements/${STAGE}.txt \
   # remove the virtual package group 'build-deps'
@@ -61,7 +60,6 @@ RUN if [ -n "$(getent group ${USER_GID})" ]; \
   else \
   adduser \
   --home "/app" \
-  --gecos "MAIL_DIR=/dev/null" \
   --shell /bin/ash \
   --ingroup "django" \
   --system \
@@ -81,18 +79,13 @@ RUN apk add --no-cache postgresql-dev \
   # XLSX dependencies
   libxml2-dev libxslt-dev
 
-# ensure that we are using the same requirements from the build stage
-COPY --from=build /requirements /tmp/requirements
-# copy our wheels from the build stage
-# COPY --from=build /tmp/wheels /tmp/wheels
-
-# combine build and ${STAGE}.txt - remove --no-binary to installing our own wheels
+# combine build and ${STAGE}.txt - remove --no-binary to install our own wheels
 RUN --mount=type=bind,target=/tmp/wheels,source=/tmp/wheels,from=build \
+  --mount=type=bind,target=/requirements,source=/requirements,from=build,readwrite \
   --mount=type=cache,mode=0755,target=/root/.cache/pip \
-  du -shc /tmp/wheels \
-  && ( cat /tmp/requirements/base.txt; sed -e 's/--no-binary.*//' -e 's/^-r .*//' /tmp/requirements/${STAGE}.txt ) | tee /tmp/requirements.txt >/dev/null \
+  ( cat /requirements/base.txt; sed -e 's/--no-binary.*//' -e 's/^-r .*//' /requirements/${STAGE}.txt ) | tee /tmp/requirements.txt >/dev/null \
   && pip install --find-links=/tmp/wheels -r /tmp/requirements.txt \
-  && rm -rf /tmp/requirements /tmp/requirements.txt
+  && rm -rf /tmp/requirements.txt
 # ---------------------------------------------
 # END django image stage
 # ---------------------------------------------
@@ -108,10 +101,10 @@ COPY --chown=django . /app
 # copy the entrypoint and run scripts
 RUN for target in /app/compose/django/*; \
   do ln "$target" /"$(basename "$target")" \
-  && chmod +X /"$(basename "$target")" \
+  && chmod -v 0755 /"$(basename "$target")" \
   # remove all carriage returns in the case that a user checks out the files on a windows system
   # and has their git core.eol set to native or crlf
-  && sed -i 's/\r$//g' /entrypoint /start /seed_data; \
+  && sed -i 's/\r$//g' /"$(basename "$target")"; \
   done \
   # due to volumes mounted to these locations we must created and set the ownership of the underlying directory
   # so that it is correctly propagated to the named volume
@@ -126,14 +119,14 @@ RUN for target in /app/compose/django/*; \
 # ---------------------------------------------
 FROM django as django-local
 
-# add our application
+# add our application CMD scripts
 COPY --chown=django ./compose/django/ /
 
 # copy the entrypoint and run scripts
-RUN chmod -v 0755 /entrypoint /start /seed_data \
+RUN find / -maxdepth 1 -type f -exec chmod -v 0755 {} \; \
   # remove all carriage returns in the case that a user checks out the files on a windows system
   # and has their git core.eol set to native or crlf
-  && sed -i 's/\r$//g' /entrypoint /start /seed_data \
+  && find / -maxdepth 1 -type f -exec sed -i 's/\r$//g' {} \; \
   # due to volumes mounted to these locations we must created and set the ownership of the underlying directory
   # so that it is correctly propagated to the named volume
   && mkdir -p "/app/ghostwriter/media" "/app/staticfiles" \
@@ -162,6 +155,7 @@ FROM conditional as live
 
 VOLUME ["/app/ghostwriter/media", "/app/staticfiles"]
 
+CMD ["/start"]
 ENTRYPOINT ["/entrypoint"]
 # ---------------------------------------------
 # END live stage
