@@ -80,13 +80,16 @@ jobs:
             type=edge,branch=master
             type=ref,event=branch
             type=ref,event=pr
+            type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v1
         with:
           version: latest
@@ -111,13 +114,19 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          # Caches are scoped to the current branch and parent branch.
+          # Cache miss can happen on first run of a new branch
+          # If there is a matching cache key in the default branch then that should be used.
+          # https://docs.github.com/en/actions/guides/caching-dependencies-to-speed-up-workflows#matching-a-cache-key
+          # cache key is a hash of the base and production requirements.  Changes to these files will cause a full rebuild.
+          key: ${{ runner.os }}-buildx-${{ hashFiles('requirements/base.txt', 'requirements/production.txt') }}
           restore-keys: |
             ${{ runner.os }}-buildx-
 
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
+          builder: ${{ steps.buildx.outputs.name }}
           context: .
           file: ./compose/django/Dockerfile
           platforms: ${{ env.PLATFORMS }}
@@ -125,7 +134,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           # type=gha will replace type=local when a buildx release containing
           # https://github.com/docker/buildx/commit/5ca0cbff8ed63450a6d4a3b32659e9521d329a43 is published
           # https://github.com/docker/buildx/pull/535
