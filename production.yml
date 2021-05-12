@@ -2,7 +2,7 @@ version: '3.2'
 
 services:
   django:
-    image: ghcr.io/quantum-sec/ghostwriter:feature-push-to-container-registry
+    image: ghcr.io/quantum-sec/ghostwriter:2.2
     restart: unless-stopped
     env_file:
       - './.envs/.production/.django'
@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
 
   queue:
-    image: ghcr.io/quantum-sec/ghostwriter:feature-push-to-container-registry
+    image: ghcr.io/quantum-sec/ghostwriter:2.2
     restart: unless-stopped
     env_file:
       - './.envs/.production/.django'
