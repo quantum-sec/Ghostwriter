@@ -1,67 +1,73 @@
-version: "3"
-
-volumes:
-  production_postgres_data: {}
-  production_postgres_data_backups: {}
-  production_staticfiles: {}
-  production_data: {}
+version: '3.2'
 
 services:
-  django: &django
-    build:
-      context: .
-      dockerfile: ./compose/production/django/Dockerfile
-    image: ghostwriter_production_django
+  django:
+    image: ghcr.io/quantum-sec/ghostwriter:2.2
     restart: unless-stopped
-    depends_on:
-      - postgres
-      - redis
     env_file:
-      - ./.envs/.production/.django
-      - ./.envs/.production/.postgres
-    command: /start
+      - './.envs/.production/.django'
+      - './.envs/.production/.postgres'
     volumes:
-      - production_staticfiles:/app/staticfiles
-      - production_data:/app/ghostwriter/media
+      - # staticfiles is where collectstatic will collect static files to
+        # https://docs.djangoproject.com/en/dev/ref/settings/#static-root
+        type: volume
+        source: staticfiles
+        target: /app/staticfiles
+        read_only: false
+      - # media is where ghostwriter will write to and serve reports as well as other local media from
+        type: volume
+        source: media
+        target: /app/ghostwriter/media
+        read_only: false
+    command: /start live
 
   postgres:
     build:
       context: .
-      dockerfile: ./compose/production/postgres/Dockerfile
-    image: ghostwriter_production_postgres
+      dockerfile: ./compose/postgres/Dockerfile
     restart: unless-stopped
-    volumes:
-      - production_postgres_data:/var/lib/postgresql/data
-      - production_postgres_data_backups:/backups
     env_file:
-      - ./.envs/.production/.postgres
-
-  nginx:
-    build: ./compose/production/nginx
-    image: ghostwriter_production_nginx
-    restart: unless-stopped
-    depends_on:
-      - django
-    volumes:
-      - production_data:/app/media
-      - production_staticfiles:/app/staticfiles
-      - ./compose/production/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/ssl
-    ports:
-      - "0.0.0.0:80:80"
-      - "0.0.0.0:443:443"
+      - './.envs/.production/.postgres'
 
   redis:
-    image: redis:5-alpine
     restart: unless-stopped
 
   queue:
-    <<: *django
-    image: ghostwriter_production_queue
+    image: ghcr.io/quantum-sec/ghostwriter:2.2
+    restart: unless-stopped
+    env_file:
+      - './.envs/.production/.django'
+      - './.envs/.production/.postgres'
+
+  nginx:
+    image: nginxinc/nginx-unprivileged:stable
     restart: unless-stopped
     depends_on:
-      - redis
-      - postgres
       - django
-    ports: []
-    command: /start-queue
+    environment:
+      NGINX_ENTRYPOINT_QUIET_LOGS: 1
+    volumes:
+      - type: volume
+        source: media
+        target: /app/media
+        read_only: true
+        volume:
+          nocopy: true
+      - type: volume
+        source: staticfiles
+        target: /app/staticfiles
+        read_only: true
+        volume:
+          nocopy: true
+      - type: bind
+        source: ./compose/nginx/nginx.conf
+        target: /etc/nginx/conf.d/default.conf
+        # target: /etc/nginx/nginx.conf
+        read_only: true
+      - type: bind
+        source: ./ssl
+        target: /ssl
+        read_only: true
+    ports:
+      - '0.0.0.0:80:80'
+      - '0.0.0.0:443:443'
